@@ -1,40 +1,46 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import User from './models/User.js';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
+
+// Load environment variables
 dotenv.config();
 
 const seedUser = async () => {
   try {
-    // Connect to the database
-    await mongoose.connect(process.env.MONGO_URI, {
+    // Connect to MongoDB
+    await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
 
-    console.log('Connected to MongoDB...');
+    // Clear existing users
+    await User.deleteMany({});
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: 'nelson@gmail.com' });
-    if (existingUser) {
-      console.log('User already exists');
-      process.exit(0);
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('nelson', salt);
-
-    // Create new user
+    // Create a test user
+    const hashedPassword = await bcrypt.hash('nelson', 10);
+    
     const user = new User({
-      name: 'Nelson',
+      name: 'nelson',
       email: 'nelson@gmail.com',
       password: hashedPassword,
       role: 'user'
     });
 
     await user.save();
-    console.log('User created successfully');
+    console.log('User seeded successfully');
+    
+    // Create a test owner
+    const owner = new User({
+      name: 'nelson',
+      email: 'nelson@gmail.com',
+      password: await bcrypt.hash('nelson', 10),
+      role: 'owner'
+    });
+
+    await owner.save();
+    console.log('Owner seeded successfully');
+
     process.exit(0);
   } catch (error) {
     console.error('Error seeding user:', error);
