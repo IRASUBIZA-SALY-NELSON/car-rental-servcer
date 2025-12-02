@@ -8,6 +8,7 @@ const ownerRouter = express.Router();
 
 ownerRouter.post("/change-role", protect, changeRoleToOwner)
 ownerRouter.post('/add-car', 
+    protect,
     upload.array('images', 5),
     uploadToImageKit,
     addCar
