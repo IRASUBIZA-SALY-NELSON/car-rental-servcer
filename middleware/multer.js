@@ -1,5 +1,45 @@
 import multer from "multer";
+import path from "path";
+import { fileURLToPath } from 'url';
 
-const upload = multer({storage: multer.diskStorage({})})
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export default upload
+// Configure storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../uploads/cars/'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `car-${uniqueSuffix}${ext}`);
+  }
+});
+
+// File filter for images only
+const fileFilter = (req, file, cb) => {
+  const filetypes = /jpe?g|png|webp/;
+  const mimetypes = /image\/jpe?g|image\/png|image\/webp/;
+
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = mimetypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Only .jpg, .jpeg, .png, and .webp files are allowed!'), false);
+  }
+};
+
+// Initialize multer with configuration
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 5 // Max 5 files
+  }
+});
+
+export default upload;
