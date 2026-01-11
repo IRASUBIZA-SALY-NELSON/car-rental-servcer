@@ -21,8 +21,8 @@ const seedUser = async () => {
     const hashedPassword = await bcrypt.hash('nelson', 10);
     
     const user = new User({
-      name: 'nelson',
-      email: 'nelson@gmail.com',
+      name: 'Test User',
+      email: 'user@gmail.com',
       password: hashedPassword,
       role: 'user'
     });
@@ -32,8 +32,8 @@ const seedUser = async () => {
     
     // Create a test owner
     const owner = new User({
-      name: 'nelson',
-      email: 'nelson@gmail.com',
+      name: 'Car Owner',
+      email: 'owner@gmail.com',
       password: await bcrypt.hash('nelson', 10),
       role: 'owner'
     });

@@ -5,6 +5,7 @@ const carSchema = new mongoose.Schema({
     owner: {type: ObjectId, ref: 'User'},
     brand: {type: String, required: true},
     model: {type: String, required: true},
+    carNumber: {type: String, required: false},
     image: {type: String, required: true},
     year: {type: Number, required: true},
     category: {type: String, required: true},

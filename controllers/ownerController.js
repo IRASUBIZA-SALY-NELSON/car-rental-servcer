@@ -24,14 +24,17 @@ export const addCar = async (req, res) => {
         const { _id } = req.user;
         const car = JSON.parse(req.body.carData);
         
-        // Get the first uploaded file URL from uploadToImageKit middleware
-        const image = req.uploadedFiles && req.uploadedFiles[0]?.url;
+        // Get uploaded files from uploadToImageKit middleware
+        const uploadedFiles = req.uploadedFiles || [];
         
-        if (!image) {
-            return res.status(400).json({ success: false, message: "No image uploaded" });
+        if (uploadedFiles.length === 0) {
+            return res.status(400).json({ success: false, message: "No images uploaded" });
         }
 
-        await Car.create({ ...car, owner: _id, image });
+        // Create images array from uploaded files
+        const images = uploadedFiles.map(file => file.url);
+
+        await Car.create({ ...car, owner: _id, images });
         res.json({ success: true, message: "Car Added" });
 
     } catch (error) {
@@ -117,14 +120,26 @@ export const getDashboardData = async (req, res) =>{
 
         // Calculate monthlyRevenue from bookings where status is confirmed
         const monthlyRevenue = bookings.slice().filter(booking => booking.status === 'confirmed').reduce((acc, booking)=> acc + booking.price, 0)
+        
+        // Calculate total revenue from all confirmed bookings
+        const totalRevenue = bookings.filter(booking => booking.status === 'confirmed').reduce((acc, booking)=> acc + booking.price, 0)
+        
+        // Calculate average booking value
+        const averageBookingValue = bookings.length > 0 ? Math.round(totalRevenue / bookings.length) : 0
+        
+        // Get active users count (unique users who made bookings)
+        const activeUsers = [...new Set(bookings.map(booking => booking.user?.toString()))].length
 
         const dashboardData = {
             totalCars: cars.length,
             totalBookings: bookings.length,
             pendingBookings: pendingBookings.length,
             completedBookings: completedBookings.length,
-            recentBookings: bookings.slice(0,3),
-            monthlyRevenue
+            totalRevenue,
+            monthlyRevenue,
+            averageBookingValue,
+            activeUsers,
+            recentBookings: bookings.slice(0,3)
         }
 
         res.json({ success: true, dashboardData });
