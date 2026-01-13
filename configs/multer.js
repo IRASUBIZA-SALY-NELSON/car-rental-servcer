@@ -14,7 +14,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 // Initialize multer
-const upload = multer({ 
+const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
@@ -24,37 +24,68 @@ const upload = multer({
 
 // Middleware to handle ImageKit upload
 const uploadToImageKit = async (req, res, next) => {
-    if (!req.files || req.files.length === 0) {
+    if (!req.files) {
         return next();
     }
 
     try {
-        const uploadPromises = req.files.map(file => {
-            return new Promise((resolve, reject) => {
-                imagekit.upload({
-                    file: file.buffer, // Use buffer instead of file path
-                    fileName: file.originalname,
-                    folder: '/car-rental'
-                }, (error, result) => {
-                    if (error) return reject(error);
-                    resolve({
-                        url: result.url,
-                        fileId: result.fileId,
-                        name: result.name
+        const uploadedFiles = {};
+
+        // Handle fields (upload.fields)
+        if (!Array.isArray(req.files)) {
+            const fieldNames = Object.keys(req.files);
+
+            for (const fieldName of fieldNames) {
+                const files = req.files[fieldName];
+                const uploadPromises = files.map(file => {
+                    return new Promise((resolve, reject) => {
+                        imagekit.upload({
+                            file: file.buffer,
+                            fileName: file.originalname,
+                            folder: '/car-rental'
+                        }, (error, result) => {
+                            if (error) return reject(error);
+                            resolve({
+                                url: result.url,
+                                fileId: result.fileId,
+                                name: result.name
+                            });
+                        });
+                    });
+                });
+
+                uploadedFiles[fieldName] = await Promise.all(uploadPromises);
+            }
+        } else {
+            // Handle array (upload.array)
+            const uploadPromises = req.files.map(file => {
+                return new Promise((resolve, reject) => {
+                    imagekit.upload({
+                        file: file.buffer,
+                        fileName: file.originalname,
+                        folder: '/car-rental'
+                    }, (error, result) => {
+                        if (error) return reject(error);
+                        resolve({
+                            url: result.url,
+                            fileId: result.fileId,
+                            name: result.name
+                        });
                     });
                 });
             });
-        });
 
-        const uploadedFiles = await Promise.all(uploadPromises);
+            uploadedFiles.array = await Promise.all(uploadPromises);
+        }
+
         req.uploadedFiles = uploadedFiles;
         next();
     } catch (error) {
         console.error('ImageKit upload error:', error);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             error: 'Failed to upload files to ImageKit',
-            details: error.message 
+            details: error.message
         });
     }
 };

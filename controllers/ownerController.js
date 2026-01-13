@@ -3,6 +3,7 @@ import Booking from "../models/Booking.js";
 import Car from "../models/Car.js";
 import User from "../models/User.js";
 import fs from "fs";
+import path from "path";
 
 
 // API to Change Role of User
@@ -23,18 +24,18 @@ export const addCar = async (req, res) => {
     try {
         const { _id } = req.user;
         const car = JSON.parse(req.body.carData);
-        
+
         // Get uploaded files from uploadToImageKit middleware
-        const uploadedFiles = req.uploadedFiles || [];
-        
-        if (uploadedFiles.length === 0) {
-            return res.status(400).json({ success: false, message: "No images uploaded" });
+        const uploadedFiles = req.uploadedFiles || {};
+
+        const mainImage = uploadedFiles.image?.[0]?.url;
+        const subImages = (uploadedFiles.subImages || []).map(file => file.url);
+
+        if (!mainImage) {
+            return res.status(400).json({ success: false, message: "Main image is required" });
         }
 
-        // Create images array from uploaded files
-        const images = uploadedFiles.map(file => file.url);
-
-        await Car.create({ ...car, owner: _id, images });
+        await Car.create({ ...car, owner: _id, image: mainImage, subImages });
         res.json({ success: true, message: "Car Added" });
 
     } catch (error) {
@@ -101,6 +102,49 @@ export const deleteCar = async (req, res) =>{
     }
 }
 
+// API to update car details
+export const updateCar = async (req, res) => {
+    try {
+        const { _id } = req.user;
+        const carData = JSON.parse(req.body.carData);
+        const { carId } = carData;
+
+        const car = await Car.findById(carId);
+
+        if (!car) {
+            return res.status(404).json({ success: false, message: "Car not found" });
+        }
+
+        if (car.owner.toString() !== _id.toString()) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+
+        // Get uploaded files from uploadToImageKit middleware
+        const uploadedFiles = req.uploadedFiles || {};
+
+        const updates = { ...carData };
+        delete updates.carId; // Don't try to update the ID
+
+        // Update main image if new one provided
+        if (uploadedFiles.image?.[0]?.url) {
+            updates.image = uploadedFiles.image[0].url;
+        }
+
+        // Handle sub images
+        // carData.subImages contains the existing URLs to keep
+        const newSubImages = (uploadedFiles.subImages || []).map(file => file.url);
+        updates.subImages = [...(carData.subImages || []), ...newSubImages];
+
+        await Car.findByIdAndUpdate(carId, updates);
+
+        res.json({ success: true, message: "Car Updated Successfully" });
+
+    } catch (error) {
+        console.error('Error in updateCar:', error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}
+
 
 
 // API to get Dashboard Data
@@ -120,13 +164,13 @@ export const getDashboardData = async (req, res) =>{
 
         // Calculate monthlyRevenue from bookings where status is confirmed
         const monthlyRevenue = bookings.slice().filter(booking => booking.status === 'confirmed').reduce((acc, booking)=> acc + booking.price, 0)
-        
+
         // Calculate total revenue from all confirmed bookings
         const totalRevenue = bookings.filter(booking => booking.status === 'confirmed').reduce((acc, booking)=> acc + booking.price, 0)
-        
+
         // Calculate average booking value
         const averageBookingValue = bookings.length > 0 ? Math.round(totalRevenue / bookings.length) : 0
-        
+
         // Get active users count (unique users who made bookings)
         const activeUsers = [...new Set(bookings.map(booking => booking.user?.toString()))].length
 
@@ -186,4 +230,4 @@ export const updateUserImage = async (req, res)=>{
         res.json({success: false, message: error.message})
     }
 
-}   
+}

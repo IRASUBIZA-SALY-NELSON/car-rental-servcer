@@ -19,22 +19,22 @@ const seedUser = async () => {
 
     // Create a test user
     const hashedPassword = await bcrypt.hash('nelson', 10);
-    
+
     const user = new User({
-      name: 'Test User',
-      email: 'user@gmail.com',
+      name: 'IRASUBIZA SALY NELSON',
+      email: 'irasubizasalynelson@gmail.com',
       password: hashedPassword,
       role: 'user'
     });
 
     await user.save();
     console.log('User seeded successfully');
-    
+
     // Create a test owner
     const owner = new User({
-      name: 'Car Owner',
-      email: 'owner@gmail.com',
-      password: await bcrypt.hash('nelson', 10),
+      name: 'Rordigue',
+      email: 'admin@gmail.com',
+      password: await bcrypt.hash('R0d$T!Adm1n#2026', 10),
       role: 'owner'
     });
 
