@@ -17,8 +17,16 @@ export const checkAvailabilityOfCar = async (req, res)=>{
     try {
         const {location, pickupDate, returnDate} = req.body
 
-        // fetch all available cars for the given location
-        const cars = await Car.find({location, isAvaliable: true})
+        // fetch all available cars - handle multiple cities or all cities
+        let query = {isAvaliable: true};
+
+        if (location) {
+            // If searching for all cities, don't filter by location
+            // Otherwise, find cars that include the searched location
+            query.location = location === 'all-cities' ? {$exists: true} : {$in: [location]};
+        }
+
+        const cars = await Car.find(query)
 
         // check car availability for the given date range using promise
         const availableCarsPromises = cars.map(async (car)=>{
@@ -66,7 +74,7 @@ export const createBooking = async (req, res)=>{
     }
 }
 
-// API to List User Bookings 
+// API to List User Bookings
 export const getUserBookings = async (req, res)=>{
     try {
         const {_id} = req.user;
