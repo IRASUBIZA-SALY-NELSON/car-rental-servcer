@@ -1,6 +1,7 @@
 import User from "../models/User.js"
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import Car from "../models/Car.js";
 
 
@@ -35,7 +36,7 @@ export const registerUser = async (req, res)=>{
     }
 }
 
-// Login User 
+// Login User
 export const loginUser = async (req, res)=>{
     try {
         const {email, password} = req.body
@@ -74,5 +75,84 @@ export const getCars = async (req, res) =>{
     } catch (error) {
         console.log(error.message);
         res.json({success: false, message: error.message})
+    }
+}
+
+// Forgot Password
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.json({ success: false, message: 'Email is required' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.json({ success: false, message: 'No user found with this email address' });
+        }
+
+        // Generate reset token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+        await User.findByIdAndUpdate(user._id, {
+            resetPasswordToken: resetToken,
+            resetPasswordExpires: resetPasswordExpires
+        });
+
+        // In production, you would send an email here
+        // For now, we'll just return success
+        console.log(`Password reset token for ${email}: ${resetToken}`);
+
+        res.json({
+            success: true,
+            message: 'Password reset link sent to your email',
+            resetToken // For development/testing
+        });
+
+    } catch (error) {
+        console.log(error.message);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Reset Password
+export const resetPassword = async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+
+        if (!token || !newPassword) {
+            return res.json({ success: false, message: 'Token and new password are required' });
+        }
+
+        if (newPassword.length < 8) {
+            return res.json({ success: false, message: 'Password must be at least 8 characters long' });
+        }
+
+        const user = await User.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.json({ success: false, message: 'Invalid or expired reset token' });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update user password and clear reset fields
+        await User.findByIdAndUpdate(user._id, {
+            password: hashedPassword,
+            resetPasswordToken: undefined,
+            resetPasswordExpires: undefined
+        });
+
+        res.json({ success: true, message: 'Password reset successfully' });
+
+    } catch (error) {
+        console.log(error.message);
+        res.json({ success: false, message: error.message });
     }
 }
